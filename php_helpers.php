@@ -707,44 +707,68 @@ use Illuminate\Routing\Controller as BaseController,
         $dimensions = r1_countdim(config($option_arr[0].'.'.$option_arr[1]));
 
         // 7.3. Если $value2change['type'] относится к следующим
-        if(in_array($value2change['type'], ['boolean', 'integer', 'double', 'string'])) {
+        if(in_array($value2change['type'], ['boolean', 'integer', 'double', 'string', 'array'])) {
 
-          // 1] Преобразовать $value2change['value'] к его строковому эквиваленту
+          // 1] Преобразовать $value2set к его строковому эквиваленту
           switch (gettype($value2set)) {
-            case 'boolean':  $value2change['value'] = $value2change['value'] ? 'true' : 'false'; break;
-            case 'integer':  $value2change['value'] = ''.$value2change['value']; break;
-            case 'double':   $value2change['value'] = ''.$value2change['value']; break;
+            case 'boolean':  $value2set = $value2set ? 'true' : 'false'; break;
+            case 'integer':  $value2set = ''.$value2set; break;
+            case 'double':   $value2set = ''.$value2set; break;
             case 'string':   break;
           }
 
           // 2] Извлечь содержимое конфига $option_arr[0]
           $config = r1_fs('config')->get($option_arr[0].'.php');
 
-          // 3] Узнать 
+          // 3] Напис.функц.для получения ссылки на св-во многомерного массива
+          $get_multidem_prop = function &(&$array, $keys){
+            $result = &$array;
+            foreach($keys as &$key) {
+              $result = &$result[$key];
+            }
+            return $result;
+          };
 
+          // 4] Изменить значение $value
+          $keys = [];
+          for($i=2; $i<count($option_arr); $i++) {
+            array_push($keys, $option_arr[$i]);
+          }
+          $newvalue = &$get_multidem_prop($value, $keys);
+          $newvalue = $value2set;
 
-//          // 3] Найти и заменить в конфиге значение опции $option_arr[1]
-//          if(in_array($type, ['boolean', 'integer', 'double']))
-//            $config = preg_replace("/'".$option_arr[1]."' *=> *.*/ui", "'".$option_arr[1]."' => ".$value2set.",", $config);
-//          else
-//            $config = preg_replace("/'".$option_arr[1]."' *=> *.*/ui", "'".$option_arr[1]."' => '".$value2set."',", $config);
-//
-//          // 4] Перезаписать $config
-//          r1_fs('config')->put($option_arr[0].'.php', $config);
+          // 5] Сформировать строку для замены $value
 
-        }
+            // 5.1] Создать новый экземпляр энкодера
+            $encoder = new \Riimu\Kit\PHPEncoder\PHPEncoder();
 
-        // 7.4. Если $value2change['type'] относится к следующим
-        if(in_array($value2change['type'], ['array'])) {
+            // 5.2] Закодировать $value
+            $value = $encoder->encode($value, ['array.indent' => 2, 'array.base' => 4]);
 
+          // 6] Найти и заменить $value в $config
 
+            // 6.1] Сформировать регулярное выражение
+            $regex = "/'" . $option_arr[1] . "' *=> *\[.*\]";
+
+            // 6.2] Учесть кол-во измерений в массиве
+            if(+$dimensions >= 2) {
+              for($i=0; $i<count($dimensions) + 1; $i++) {
+                $regex = $regex . '.*\]';
+              }
+            }
+
+            // 6.3] Завершить регулярное выражение
+            $regex = $regex . "/smuiU";
+
+            // 6.4] Заменить
+            $config = preg_replace($regex, "'".$option_arr[1]."' => ".$value, $config);
+
+          // 7] Перезаписать $config
+          r1_fs('config')->put($option_arr[0].'.php', $config);
 
         }
 
       }
-
-
-
 
       // n] Вернуть ответ
       return 1;
