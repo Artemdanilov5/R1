@@ -14,6 +14,9 @@
  * r1_url_exist               | Узнать, существует ли указанный URL
  * r1_array_unique_recursive  | array_unique для многомерных массивов
  * r1_udatetime               | Get string repres.of datetime with microseconds
+ * r1_fs                      | Get new FilesystemManager instance
+ * r1_fs2                     | Get new Filesystem instance
+ * r1_config_set              | Set value for specified option of specified config
  *
  */
 ////======================================================//*/
@@ -433,3 +436,126 @@ use Illuminate\Routing\Controller as BaseController,
     \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_udatetime, поскольку такая уже есть!');
     write2log('Внимание! Пакету R1 не удалось определить функцию r1_udatetime, поскольку такая уже есть!', ['R1','r1_udatetime']);
   }
+
+
+  //-------//
+  // r1_fs //
+  //-------//
+	if(!function_exists('r1_fs')) {
+		/**
+		 * Get new FilesystemManager instance
+     *
+     * @param  string $path
+     *
+		 * @return object
+		 */
+    function r1_fs($path)
+    {
+
+      config(['filesystems.default' => 'local']);
+      config(['filesystems.disks.local.root' => base_path($path)]);
+      return new \Illuminate\Filesystem\FilesystemManager(app());
+
+    }
+	} else {
+    \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_fs, поскольку такая уже есть!');
+    write2log('Внимание! Пакету R1 не удалось определить функцию r1_fs, поскольку такая уже есть!', ['R1','r1_fs']);
+  }
+
+
+  //--------//
+  // r1_fs2 //
+  //--------//
+	if(!function_exists('r1_fs2')) {
+		/**
+		 * Get new Filesystem instance
+     *
+		 * @return object
+		 */
+    function r1_fs2()
+    {
+
+      return new \Illuminate\Filesystem\Filesystem();
+
+    }
+	} else {
+    \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_fs2, поскольку такая уже есть!');
+    write2log('Внимание! Пакету R1 не удалось определить функцию r1_fs2, поскольку такая уже есть!', ['R1','r1_fs2']);
+  }
+
+
+
+  //---------------//
+  // r1_config_set //
+  //---------------//
+	if(!function_exists('r1_config_set')) {
+		/**
+		 * Set value for specified option of specified config
+     *
+     * @param  string $option
+     * @param  string $value
+     *
+		 * @return string
+		 */
+    function r1_config_set($option, $value)
+    { try {
+
+      // 1] Создать новую FS относительно каталога config
+      $fs = r1_fs('config');
+
+      // 2] Разобрать $option на составляющие
+      //
+      //  $option_arr[0]   | имя конфига
+      //  $option_arr[1]   | имя опции в конфиге
+      //  $option_arr[2..] | для опций-массивов, имена ключей массивов
+      //
+      $option_arr = explode('.',$option);
+      if(!array_key_exists(0,$option_arr) || !array_key_exists(1,$option_arr))
+        throw new \Exception('Значение параметра option не соответствует формату. Пример правильного значения: "M5.common_ison"');
+
+      // 3] Получить значение опции
+      $value = config($option_arr[0].'.'.$option_arr[1]);
+
+      // 4] Узнать тип значения опции
+      $type = call_user_func(function() USE ($value) {
+
+        switch (gettype($value)) {
+          case 'boolean':       return 'boolean';
+          case 'integer':       return 'integer';
+          case 'double':        return 'double';
+          case 'string':        return 'string';
+          case 'array':         return 'array';
+          case 'object':        return 'object';
+          case 'resource':      return 'resource';
+          case 'NULL':          return 'NULL';
+          case 'unknown type':  return 'unknown type';
+          default:              return 'unknown type';
+        }
+
+      });
+
+
+
+
+      write2log($type, []);
+
+
+      // 3] Вернуть ответ
+      return 1;
+
+    }
+    catch(\Exception $e) {
+      write2log('При попытке назначить новое значение опции M5.common_ison возникла ошибка', ['r1_config_set']);
+      return 0;
+    }}
+	} else {
+    \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_config_set, поскольку такая уже есть!');
+    write2log('Внимание! Пакету R1 не удалось определить функцию r1_config_set, поскольку такая уже есть!', ['R1','r1_config_set']);
+  }
+
+
+
+
+
+
+
