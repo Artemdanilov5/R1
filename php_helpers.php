@@ -484,6 +484,68 @@ use Illuminate\Routing\Controller as BaseController,
   }
 
 
+  //-------------//
+  // r1_countdim //
+  //-------------//
+	if(!function_exists('r1_countdim')) {
+		/**
+		 * Get new Filesystem instance
+     *
+     * @param  string $array
+     *
+		 * @return object
+		 */
+    function r1_countdim($array)
+    { try {
+
+      // 1] Если $array не массив, возбудить исключение
+      if(!is_array($array))
+        throw new \Exception('Параметр array не является массивом');
+
+      // 2] Подготовить переменную для результата
+      $result = 1;
+
+      // 3] Если длина массива $array == 0, вернуть $result
+      if(count($array) == 0) return $result;
+
+      // 4] Написать рекурсивную функцию для прощупывания глубины
+      $recur = function($item, $depth = 0) USE (&$recur) {
+
+        // 4.1] Если $item не массив, вернуть 0
+        if(!is_array($item)) return 0;
+
+        // 4.2] Если $item это пустой массив
+        if(count($item) == 0) return $depth;
+
+        // 4.3] Если же $item это массив
+        $results = [];
+        foreach($item as $elem) {
+
+          // 4.3.1] Если $elem не массив
+          if(!is_array($elem)) array_push($results, +$depth);
+
+          // 4.3.2] Если $elem массив
+          else array_push($results, $recur($elem, +$depth+1));
+
+        }
+
+        // 4.4] Вернуть максимальное из $results
+        return max($results);
+
+      };
+
+      // 5] Вернуть результат
+      return +$result + +$recur($array);
+
+    } catch(\Exception $e) {
+      write2log('Ошибка в хелпере r1_countdim: '.$e->getMessage(), ['r1_countdim']);
+      return 0;
+    }}
+	} else {
+    \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_countdim, поскольку такая уже есть!');
+    write2log('Внимание! Пакету R1 не удалось определить функцию r1_countdim, поскольку такая уже есть!', ['R1','r1_countdim']);
+  }
+
 
   //---------------//
   // r1_config_set //
@@ -493,17 +555,17 @@ use Illuminate\Routing\Controller as BaseController,
 		 * Set value for specified option of specified config
      *
      * @param  string $option
-     * @param  string $value
+     * @param  string $value2set
      *
 		 * @return string
 		 */
-    function r1_config_set($option, $value)
+    function r1_config_set($option, $value2set)
     { try {
 
-      // 1] Создать новую FS относительно каталога config
+      // 1. Создать новую FS относительно каталога config
       $fs = r1_fs('config');
 
-      // 2] Разобрать $option на составляющие
+      // 2. Разобрать $option на составляющие
       //
       //  $option_arr[0]   | имя конфига
       //  $option_arr[1]   | имя опции в конфиге
@@ -513,10 +575,10 @@ use Illuminate\Routing\Controller as BaseController,
       if(!array_key_exists(0,$option_arr) || !array_key_exists(1,$option_arr))
         throw new \Exception('Значение параметра option не соответствует формату. Пример правильного значения: "M5.common_ison"');
 
-      // 3] Получить значение опции
+      // 3. Получить значение опции
       $value = config($option_arr[0].'.'.$option_arr[1]);
 
-      // 4] Узнать тип значения опции
+      // 4. Узнать тип значения опции
       $type = call_user_func(function() USE ($value) {
 
         switch (gettype($value)) {
@@ -533,19 +595,163 @@ use Illuminate\Routing\Controller as BaseController,
         }
 
       });
+      if(in_array($type, ['object', 'resource', 'NULL', 'unknown type']))
+        throw new \Exception("Хелпер r1_config_set не работает со значениями следующих типов: 'object', 'resource', 'NULL', 'unknown type'");
+
+      // 5. Узнать тип значения $value2set
+      $type2set = call_user_func(function() USE ($value2set) {
+
+        switch (gettype($value2set)) {
+          case 'boolean':       return 'boolean';
+          case 'integer':       return 'integer';
+          case 'double':        return 'double';
+          case 'string':        return 'string';
+          case 'array':         return 'array';
+          case 'object':        return 'object';
+          case 'resource':      return 'resource';
+          case 'NULL':          return 'NULL';
+          case 'unknown type':  return 'unknown type';
+          default:              return 'unknown type';
+        }
+
+      });
+      if(in_array($type2set, ['object', 'resource', 'NULL', 'unknown type']))
+        throw new \Exception("Хелпер r1_config_set не работает со значениями следующих типов: 'object', 'resource', 'NULL', 'unknown type'");
+      if($type != 'array' && $type !==  $type2set)
+        throw new \Exception('Тип назначаемого значения должен соответствовать типу опции: '.$type);
+
+      // 6. Если $type относится к тем, что умещаются на 1-й строке
+      if(in_array($type, ['boolean', 'integer', 'double', 'string'])) {
+
+        // 6.1. Преобразовать $value2set к его строковому эквиваленту
+        switch (gettype($value2set)) {
+          case 'boolean':  $value2set = $value2set ? 'true' : 'false'; break;
+          case 'integer':  $value2set = ''.$value2set; break;
+          case 'double':   $value2set = ''.$value2set; break;
+          case 'string':   break;
+        }
+
+        // 6.2. Извлечь содержимое конфига $option_arr[0]
+        $config = r1_fs('config')->get($option_arr[0].'.php');
+
+        // 6.3. Найти и заменить в конфиге значение опции $option_arr[1]
+        if(in_array($type, ['boolean', 'integer', 'double']))
+          $config = preg_replace("/'".$option_arr[1]."' *=> *.*/ui", "'".$option_arr[1]."' => ".$value2set.",", $config);
+        else
+          $config = preg_replace("/'".$option_arr[1]."' *=> *.*/ui", "'".$option_arr[1]."' => '".$value2set."',", $config);
+
+        // 6.4. Перезаписать $config
+        r1_fs('config')->put($option_arr[0].'.php', $config);
+
+      }
+
+      // 7. Если $type - массив
+      if(in_array($type, ['array'])) {
+
+        // 7.1. Извлечь значение, которое надо изменить, и его тип
+        $value2change = call_user_func(function() USE ($value, $type, $option_arr, $type2set) {
+
+          // 1] Если в $option_arr лишь 2 элемента, вернуть $value и $type
+          if(count($option_arr) == 2) return [
+            "value" => $value,
+            "type"  => $type
+          ];
+
+          // 2] Проверить существование искомого значения
+          $arrpath = "";
+          for($i=2; $i<count($option_arr); $i++) {
+
+            // 2.1] Дополнить $arrpath
+            $arrpath = $arrpath . '.' . $option_arr[$i];
+
+            // 2.2] Проверить существование такого св-ва массива
+            if(is_null(config($option_arr[0].'.'.$option_arr[1].$arrpath)))
+              throw new \Exception('Попытка изменить значение несуществующего в опции-массиве свойства: '.$arrpath);
+
+          }
+
+          // 3] Получить искомое значение
+          $res_value = config($option_arr[0].'.'.$option_arr[1].$arrpath);
+
+          // 4] Получить тип искомого значения
+          $res_type = call_user_func(function() USE ($res_value) {
+
+            switch (gettype($res_value)) {
+              case 'boolean':       return 'boolean';
+              case 'integer':       return 'integer';
+              case 'double':        return 'double';
+              case 'string':        return 'string';
+              case 'array':         return 'array';
+              case 'object':        return 'object';
+              case 'resource':      return 'resource';
+              case 'NULL':          return 'NULL';
+              case 'unknown type':  return 'unknown type';
+              default:              return 'unknown type';
+            }
+
+          });
+          if(in_array($res_type, ['object', 'resource', 'NULL', 'unknown type']))
+            throw new \Exception("Хелпер r1_config_set не работает со значениями следующих типов: 'object', 'resource', 'NULL', 'unknown type'");
+          if($type2set !== $res_type)
+            throw new \Exception('Тип назначаемого значения должен соответствовать типу опции: '.$res_type);
+
+          // 5] Вернуть результат
+          return [
+            "value" => $res_value,
+            "type"  => $res_type
+          ];
+
+        });
+
+        // 7.2. Узнать кол-во измерений массива config($option_arr[0].'.'.$option_arr[1].$arrpath
+        $dimensions = r1_countdim(config($option_arr[0].'.'.$option_arr[1]));
+
+        // 7.3. Если $value2change['type'] относится к следующим
+        if(in_array($value2change['type'], ['boolean', 'integer', 'double', 'string'])) {
+
+          // 1] Преобразовать $value2change['value'] к его строковому эквиваленту
+          switch (gettype($value2set)) {
+            case 'boolean':  $value2change['value'] = $value2change['value'] ? 'true' : 'false'; break;
+            case 'integer':  $value2change['value'] = ''.$value2change['value']; break;
+            case 'double':   $value2change['value'] = ''.$value2change['value']; break;
+            case 'string':   break;
+          }
+
+          // 2] Извлечь содержимое конфига $option_arr[0]
+          $config = r1_fs('config')->get($option_arr[0].'.php');
+
+          // 3] Узнать 
+
+
+//          // 3] Найти и заменить в конфиге значение опции $option_arr[1]
+//          if(in_array($type, ['boolean', 'integer', 'double']))
+//            $config = preg_replace("/'".$option_arr[1]."' *=> *.*/ui", "'".$option_arr[1]."' => ".$value2set.",", $config);
+//          else
+//            $config = preg_replace("/'".$option_arr[1]."' *=> *.*/ui", "'".$option_arr[1]."' => '".$value2set."',", $config);
+//
+//          // 4] Перезаписать $config
+//          r1_fs('config')->put($option_arr[0].'.php', $config);
+
+        }
+
+        // 7.4. Если $value2change['type'] относится к следующим
+        if(in_array($value2change['type'], ['array'])) {
+
+
+
+        }
+
+      }
 
 
 
 
-      write2log($type, []);
-
-
-      // 3] Вернуть ответ
+      // n] Вернуть ответ
       return 1;
 
     }
     catch(\Exception $e) {
-      write2log('При попытке назначить новое значение опции M5.common_ison возникла ошибка', ['r1_config_set']);
+      write2log('При попытке назначить новое значение опции M5.common_ison возникла ошибка: '.$e->getMessage(), ['r1_config_set']);
       return 0;
     }}
 	} else {
