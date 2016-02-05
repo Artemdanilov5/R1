@@ -17,6 +17,8 @@
  * r1_fs                      | Get new FilesystemManager instance
  * r1_fs2                     | Get new Filesystem instance
  * r1_config_set              | Set value for specified option of specified config
+ * r1_query                   | Inter-m-packages-save-queries
+ *
  *
  */
 ////======================================================//*/
@@ -784,6 +786,31 @@ use Illuminate\Routing\Controller as BaseController,
   }
 
 
+  //----------//
+  // r1_query //
+  //----------//
+	if(!function_exists('r1_query')) {
+		/**
+		 * Inter-m-packages-save-queries
+     *
+     * @param  string $callback
+     *
+		 * @return object
+		 */
+    function r1_query($callback)
+    { try {
+
+      $result = call_user_func($callback);
+      return $result;
+
+    } catch(\Exception $e) {
+      write2log('Ошибка в хелпере r1_query: '.$e->getMessage(), ['r1_query']);
+      return collect([]);
+    }}
+	} else {
+    \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_query, поскольку такая уже есть!');
+    write2log('Внимание! Пакету R1 не удалось определить функцию r1_query, поскольку такая уже есть!', ['R1','r1_query']);
+  }
 
 
 
