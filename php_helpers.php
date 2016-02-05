@@ -18,6 +18,7 @@
  * r1_fs2                     | Get new Filesystem instance
  * r1_config_set              | Set value for specified option of specified config
  * r1_query                   | Inter-m-packages-save-queries
+ * r1_isJSON                  | Является ли переданная строка валидным JSON
  *
  *
  */
@@ -813,6 +814,28 @@ use Illuminate\Routing\Controller as BaseController,
   }
 
 
+  //----------//
+  // r1_isJSON //
+  //----------//
+	if(!function_exists('r1_isJSON')) {
+		/**
+		 * Является ли переданная строка валидным JSON
+     *
+     * @param  string $string
+     *
+		 * @return object
+		 */
+    function r1_isJSON($string)
+    { try {
 
+      json_decode($string);
+      return (json_last_error() == JSON_ERROR_NONE);
 
+    } catch(\Exception $e) {
+      write2log('Ошибка в хелпере r1_isJSON: '.$e->getMessage(), ['r1_query']);
+    }}
+	} else {
+    \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_isJSON, поскольку такая уже есть!');
+    write2log('Внимание! Пакету R1 не удалось определить функцию r1_isJSON, поскольку такая уже есть!', ['R1','r1_isJSON']);
+  }
 
