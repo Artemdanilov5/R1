@@ -814,9 +814,9 @@ use Illuminate\Routing\Controller as BaseController,
   }
 
 
-  //----------//
+  //-----------//
   // r1_isJSON //
-  //----------//
+  //-----------//
 	if(!function_exists('r1_isJSON')) {
 		/**
 		 * Является ли переданная строка валидным JSON
@@ -832,10 +832,144 @@ use Illuminate\Routing\Controller as BaseController,
       return (json_last_error() == JSON_ERROR_NONE);
 
     } catch(\Exception $e) {
-      write2log('Ошибка в хелпере r1_isJSON: '.$e->getMessage(), ['r1_query']);
+      write2log('Ошибка в хелпере r1_isJSON: '.$e->getMessage(), ['r1_isJSON']);
     }}
 	} else {
     \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_isJSON, поскольку такая уже есть!');
     write2log('Внимание! Пакету R1 не удалось определить функцию r1_isJSON, поскольку такая уже есть!', ['R1','r1_isJSON']);
   }
+
+
+  //---------------------//
+  // r1_is_schema_exists //
+  //---------------------//
+	if(!function_exists('r1_is_schema_exists')) {
+		/**
+		 * Существует ли указанная база данных
+     *
+     * @param  string $schema
+     *
+		 * @return bool
+		 */
+    function r1_is_schema_exists($schema)
+    { try {
+
+      $check = \DB::SELECT("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '".$schema."'");
+      if(empty($check)) return false;
+      return true;
+
+    } catch(\Exception $e) {
+      write2log('Ошибка в хелпере r1_is_schema_exists: '.$e->getMessage(), ['r1_is_schema_exists']);
+    }}
+	} else {
+    \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_is_schema_exists, поскольку такая уже есть!');
+    write2log('Внимание! Пакету R1 не удалось определить функцию r1_is_schema_exists, поскольку такая уже есть!', ['R1','r1_is_schema_exists']);
+  }
+
+
+  //-------------//
+  // r1_hasTable //
+  //-------------//
+	if(!function_exists('r1_hasTable')) {
+		/**
+		 * Проверить наличие таблицы в указанной БД
+     *
+		 * @param  string $db_name
+		 * @param  string $table_name
+     *
+		 * @return bool
+		 */
+    function r1_hasTable($db_name, $table_name)
+    { try {
+
+			// Проверить
+			$exists = DB::table('information_schema.tables')
+					->where('table_schema','=',$db_name)
+					->where('table_name','=',$table_name)
+					->first();
+
+			// Вернуть результат
+			return !empty($exists);
+
+    } catch(\Exception $e) {
+      write2log('Ошибка в хелпере r1_hasTable: '.$e->getMessage(), ['r1_hasTable']);
+    }}
+	} else {
+    \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_hasTable, поскольку такая уже есть!');
+    write2log('Внимание! Пакету R1 не удалось определить функцию r1_hasTable, поскольку такая уже есть!', ['R1','r1_hasTable']);
+  }
+
+
+  //--------------//
+  // r1_hasColumn //
+  //--------------//
+	if(!function_exists('r1_hasColumn')) {
+		/**
+		 * Проверить наличие таблицы в указанной БД
+     *
+		 * @param  string $db_name
+		 * @param  string $table_name
+		 * @param  string $column_name
+     *
+		 * @return bool
+		 */
+    function r1_hasColumn($db_name, $table_name, $column_name)
+    { try {
+
+			// Проверить
+			$exists = DB::table('information_schema.columns')
+						->where('table_schema','=',$db_name)
+						->where('table_name','=',$table_name)
+						->where('column_name','=',$column_name)
+						->first();
+
+			// Вернуть результат
+			return !empty($exists);
+
+    } catch(\Exception $e) {
+      write2log('Ошибка в хелпере r1_hasColumn: '.$e->getMessage(), ['r1_hasColumn']);
+    }}
+	} else {
+    \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_hasColumn, поскольку такая уже есть!');
+    write2log('Внимание! Пакету R1 не удалось определить функцию r1_hasColumn, поскольку такая уже есть!', ['R1','r1_hasColumn']);
+  }
+
+
+  //---------------//
+  // r1_getColumns //
+  //---------------//
+	if(!function_exists('r1_getColumns')) {
+		/**
+		 * Получить список имён столбцов из указанной таблицы указанной БД
+     *
+		 * @param  string $db_name
+		 * @param  string $table_name
+     *
+		 * @return bool
+		 */
+    function r1_getColumns($db_name, $table_name)
+    { try {
+
+      // Получить
+      $columns = DB::SELECT("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '".$db_name."' AND TABLE_NAME = '".$table_name."'");
+
+      // Отвильтровать
+      $columns = array_map(function($item){
+        return $item->COLUMN_NAME;
+      }, $columns);
+
+			// Вернуть результат
+			return $columns;
+
+    } catch(\Exception $e) {
+      write2log('Ошибка в хелпере r1_getColumns: '.$e->getMessage(), ['r1_getColumns']);
+    }}
+	} else {
+    \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_getColumns, поскольку такая уже есть!');
+    write2log('Внимание! Пакету R1 не удалось определить функцию r1_getColumns, поскольку такая уже есть!', ['R1','r1_getColumns']);
+  }
+
+
+
+
 
