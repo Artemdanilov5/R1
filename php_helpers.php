@@ -3,25 +3,6 @@
 ////																										  ////
 ////              	Библиотека php-хелперов	              ////
 ////																											////
-////======================================================////
-/**
- *
- * write2log                  | Возбудить событие R2\Event с ключём "m2:write2log"
- * r1_current_user_id         | Получить ID текущего пользователя, на основе кук и кэша пакета M7
- * runcommand                 | Провести авторизацию и выполнить команду
- * r1_get_doc_locale          | Получить локаль документа C,M-пакета
- * r1_get_doc_layoutid        | Получить ID L-пакета - шаблона по умолчанию для указанного D-пакета
- * r1_url_exist               | Узнать, существует ли указанный URL
- * r1_array_unique_recursive  | array_unique для многомерных массивов
- * r1_udatetime               | Get string repres.of datetime with microseconds
- * r1_fs                      | Get new FilesystemManager instance
- * r1_fs2                     | Get new Filesystem instance
- * r1_config_set              | Set value for specified option of specified config
- * r1_query                   | Inter-m-packages-save-queries
- * r1_isJSON                  | Является ли переданная строка валидным JSON
- *
- *
- */
 ////======================================================//*/
 //// 			        		         ////
 //// 	   Подключение классов	 ////
@@ -69,13 +50,68 @@ use Illuminate\Routing\Controller as BaseController,
 //// 			         ////
 ////===============////
 
+  //-----//
+  // r1_ //
+  //-----//
+  if(!function_exists('r1_')) {
+    /**
+     *  <h1>Список хелперов пакета R1</h1>
+     *  <pre>
+     *
+     *    write2log                  | Возбудить событие R2\Event с ключём "m2:write2log"
+     *    runcommand                 | Провести авторизацию и выполнить команду
+     *    r1_get_doc_locale          | Получить локаль документа C,M-пакета
+     *    r1_get_doc_layoutid        | Получить ID L-пакета - шаблона по умолчанию для указанного D-пакета
+     *    r1_url_exist               | Узнать, существует ли указанный URL
+     *    r1_array_unique_recursive  | array_unique для многомерных массивов
+     *    r1_udatetime               | Get string repres.of datetime with microseconds
+     *    r1_fs                      | Get new FilesystemManager instance
+     *    r1_fs2                     | Get new Filesystem instance
+     *    r1_config_set              | Set value for specified option of specified config
+     *    r1_query                   | Inter-m-packages-save-queries
+     *    r1_isJSON                  | Является ли переданная строка валидным JSON
+     *    r1_is_schema_exists        | Существует ли указанная база данных
+     *    r1_hasTable                | Проверить наличие таблицы в указанной БД
+     *    r1_hasColumn               | Проверить наличие столбца в указанной таблице в указанной БД
+     *    r1_getColumns              | Получить список имён столбцов из указанной таблицы указанной БД
+     *    r1_rel_exists              | Существует ли указанная связь в указанной модели
+     *
+     *  </pre>
+     * @return bool
+     */
+    function r1_() {
+
+      return true;
+
+    }
+  } else {
+    \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_, поскольку такая уже есть!');
+    write2log('Внимание! Пакету R1 не удалось определить функцию r1_, поскольку такая уже есть!', ['R1','r1_']);
+  }
+
+
   //-----------//
   // write2log //
   //-----------//
   if(!function_exists('write2log')) {
     /**
-     * Возбудить событие R2\Event с ключём "m2:write2log"
-     * Модуль (или модули), реализующий лог, обработает его, и сделает запись.
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Возбудить событие R2\Event с ключём "m2:write2log"
+     *    M-пакет M2 перехватит его, и запишет $msg в лог, с тегами $tags
+     *    Не вернёт ничего в случае успеха.
+     *    Вернёт следующий массив в случае ошибки:
+     *
+     *      [
+     *        "status"  => -2,
+     *        "data"    => $errortext  // Текст ошибки
+     *      ];
+     *
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    write2log("сообщение", ["тег1", "тег2"]);
+     *  </pre>
      *
      * @param  string $msg
      * @param  array $tags
@@ -94,34 +130,17 @@ use Illuminate\Routing\Controller as BaseController,
   } else \Log::info('Внимание! Пакету R1 не удалось определить функцию write2log, поскольку такая уже есть!');
 
 
-  //--------------------//
-  // r1_current_user_id //
-  //--------------------//
-	if(!function_exists('lib_current_user_id')) {
-		/**
-		 * lib_current_user_id | Получить ID текущего пользователя, на основе кук и кэша от модуля M7
-     *
-		 * @return array
-		 */
-		function lib_current_user_id() {
-
-      return Request::cookie('m7_auth_cookie') ?: Cache::get('m7_anon_id') ?: -1;
-
-		}
-	} else {
-    \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_current_user_id, поскольку такая уже есть!');
-    write2log('Внимание! Пакету R1 не удалось определить функцию r1_current_user_id, поскольку такая уже есть!', ['R1','r1_current_user_id']);
-  }
-
-
   //------------//
   // runcommand //
   //------------//
   if(!function_exists('runcommand')) {
     /**
-     * Провести авторизацию и выполнить команду
-     *
-     *  # Что возвращает
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Провести авторизацию и выполнить команду
+     *  </pre>
+     *  <h1>Что возвращает</h1>
+     *  <pre>
      *    - JSON-массив:
      *
      *      [
@@ -129,13 +148,36 @@ use Illuminate\Routing\Controller as BaseController,
      *        "timestamp"     // Timestamp прихода запроса от клиента
      *        "data"          // Данные
      *      ]
-     *
-     *  # Какие статусы бывают, зависимость data от статуса
-     *
+     *  </pre>
+     *  <h1>Какие статусы бывают, зависимость data от статуса</h1>
+     *  <pre>
      *    0   // Команда выполнена успешно. В data результаты её выполненя.
      *    -1  // Нет доступа. В data строка-сообщение об этом.
      *    -2  // Команда завершилась с ошибкой. В data текст ошибки.
+     *  </pre>
+     *  <h1>Примеры использования</h1>
+     *  <pre>
      *
+     *    1. Синхронное выполнение
+     *
+     *      1.1. Простой синхронный запуск
+     *        runcommand('\M1\Commands\C1_parseapp');
+     *
+     *      1.2. С передачей данных
+     *        runcommand('\M1\Commands\C1_parseapp', ['key1'=>'value1','key2'=>'value2']);
+     *
+     *      1.3. С авторизацией по ID текущего пользователя (ID == "15" в примере)
+     *        runcommand('\M1\Commands\C1_parseapp', [], 15);
+     *
+     *    2. Добавление в очередь задач
+     *
+     *      2.1. Без дополнительной отсрочки выполнения
+     *      runcommand('\M1\Commands\C1_parseapp', [], "", ['on'=>true, 'delaysecs'=>'']);
+     *
+     *      2.2. С дополнительной отсрочкой выполнения в 10 секунд
+     *      runcommand('\M1\Commands\C1_parseapp', [], "", ['on'=>true, 'delaysecs'=>'10']);
+     *
+     *  </pre>
      *
      * @param  mixed $command
      * @param  array $data
@@ -272,42 +314,128 @@ use Illuminate\Routing\Controller as BaseController,
   //-------------------//
 	if(!function_exists('r1_get_doc_locale')) {
 		/**
-		 * Получить локаль документа C,M-пакета
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Получить установленную локаль M,D,L,W-пакета
+     *  </pre>
+     *  <h1>Правила вычисления локали пакета</h1>
+     *  <pre>
+     *
+     *    1. Если нет опубликованного конфига пакета
+     *      - В этом случае применяется локаль "RU".
+     *
+     *    2. Если
+     *        - Есть опубликованный конфиг.
+     *        - В нём есть параметры $locales и $locale.
+     *        - $locales является массивом, а $locale строкой.
+     *        - $locale есть в $locales.
+     *       То
+     *        - Возвращается локаль $locale.
+     *
+     *    3. Если
+     *        - Есть опубликованный конфиг.
+     *        - $locales нет, или это не массив строк.
+     *        - Возвращается локаль "RU".
+     *
+     *    4. Если
+     *        - Есть опубликованный конфиг.
+     *        - $locales есть, и это не пустой массив строк.
+     *        - $locale нет, или это пустая строка.
+     *        - $applocale есть, и это строка.
+     *        - $applocale есть в $locales.
+     *       То:
+     *        - Возвращается локаль $applocale.
+     *
+     *    5. Если
+     *        - Есть опубликованный конфиг.
+     *        - $locales есть, и это не пустой массив строк.
+     *        - $locale нет, или это пустая строка.
+     *        - $applocale есть, и это строка.
+     *        - $applocale нет в $locales.
+     *       То:
+     *        - Возвращается локаль $locales[0].
+     *
+     *    6. Если ни одно из предыдущих не сработало
+     *      - Возвращается локаль "RU".
+     *
+     *  </pre>
+     *  <h1>Возвращает</h1>
+     *  <pre>
+     *    В случае успеха возвращает найденную локаль.
+     *    В случае ошибки возвращает локаль "RU" и пишет сообщение в лог.
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    Получить локаль пакета M1:
+     *    r1_get_doc_locale("M1")
+     *  </pre>
+     *
+		 * Получить установленную локаль M,D,L,W-пакета
      *
      * @param  string $packid
      *
 		 * @return array
 		 */
-		function r1_get_doc_locale($packid) {
+		function r1_get_doc_locale($packid)
+    { try {
 
-      // 1] Сохранить текущие настройки Storage
-      $default  = config('filesystems.default');
-      $root     = config('filesystems.disks.local.root');
+      // 1] Провести валидацию значения $packid
+      if(preg_match("/^[MDLW]{1}[1-9]{1}[0-9]*$/ui", $packid) == 0)
+        throw new \Exception('Параметр packid не является валидным ID M,D,L,W-пакета');
 
-      // 2] Настроить Storage на каталог config
-      config(['filesystems.default' => 'local']);
-      config(['filesystems.disks.local.root' => base_path('config')]);
-
-      // 3] Подготовить переменную для локали
+      // 2] Подготовить переменную для локали
       $locale = '';
 
-      // 4] Получить локаль
-      if(!file_exists(base_path('config/'.$packid.'.php')))
-        $locale = config('app.locale');
-      else {
-        $locale = config($packid.'.locale');
-        if($locale == 'APP') $locale = config('app.locale');
-      }
-      if(empty($locale)) $locale = 'RU';
+      // 3] Вернуть локаль
 
-      // 5] Установить старые настройки Storage
-      config(['filesystems.default' => $default]);
-      config(['filesystems.disks.local.root' => $root]);
+        // 3.1] Проверить наличие опубликованного конфига пакета $packid
+        if(!file_exists(base_path('config/'.mb_strtoupper($packid).'.php')))
+          throw new \Exception('Конфиг пакета '.$packid.' не найден в каталоге config.');
 
-      // 6] Вернуть результат
-      return $locale;
+        // 3.2]
+      
 
-		}
+
+
+//        // 3.1] Проверить наличие опубликованного конфига пакета $packid
+//        if(!file_exists(base_path('config/'.mb_strtoupper($packid).'.php')))
+//          throw new \Exception('Конфиг пакета '.$packid.' не найден в каталоге config.');
+//
+//        // 3.2] Получить значения параметров locales, locale и applocale
+//        $locales    = config(mb_strtoupper($packid).'.locales');
+//        $locale     = config(mb_strtoupper($packid).'.locale');
+//        $applocale  = config('app.locale');
+//
+//        // 3.3] Если $locales нет, или это не массив, или она пуста
+//        // - Вернуть локаль "RU"
+//        if(is_null($locales) || !is_array($locales) || empty($locales)) {
+//          write2log("Проблема с локалями в пакете $packid - либо конфиг не опубликован, либо параметр locales пуст или не массив.",['r1_get_doc_locale']);
+//          return [
+//            "status"  => 0,
+//            "data"    => "RU"
+//          ];
+//        }
+//
+//        // 3.4] Если $applocale не пуста и строка, $locale NULL или пуста
+//        // - А $applocale в $locales: вернуть $applocale
+//        // - А $applocale не в $locales: вернуть 1-ю локаль из $locales
+//        if(!empty($applocale) && is_string($applocale) && empty($locale)) {
+//          return [
+//            "status"  => 0,
+//            "data"    => in_array(mb_strtolower($applocale), array_map('strtolower', $locales)) ? $applocale : (array_key_exists(0, $locales) && is_string($locales[0])) ? $locales[0] : "RU"
+//          ];
+//        }
+//
+//        // 3.5] Вернуть локаль "RU"
+//        return [
+//          "status"  => 0,
+//          "data"    => in_array($applocale, $locales) ? $applocale : (array_key_exists(0, $locales) && is_string($locales[0])) ? $locales[0] : "RU"
+//        ];
+
+    } catch(\Exception $e) {
+      write2log('Ошибка в хелпере r1_get_doc_locale: '.$e->getMessage(), ['r1_get_doc_locale']);
+      return "RU";
+    }}
 	} else {
     \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_get_doc_locale, поскольку такая уже есть!');
     write2log('Внимание! Пакету R1 не удалось определить функцию r1_get_doc_locale, поскольку такая уже есть!', ['R1','r1_get_doc_locale']);
@@ -806,7 +934,7 @@ use Illuminate\Routing\Controller as BaseController,
 
     } catch(\Exception $e) {
       write2log('Ошибка в хелпере r1_query: '.$e->getMessage(), ['r1_query']);
-      return collect([]);
+      return NULL;
     }}
 	} else {
     \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_query, поскольку такая уже есть!');
@@ -905,7 +1033,7 @@ use Illuminate\Routing\Controller as BaseController,
   //--------------//
 	if(!function_exists('r1_hasColumn')) {
 		/**
-		 * Проверить наличие таблицы в указанной БД
+		 * Проверить наличие столбца в указанной таблице в указанной БД
      *
 		 * @param  string $db_name
 		 * @param  string $table_name
@@ -970,6 +1098,54 @@ use Illuminate\Routing\Controller as BaseController,
   }
 
 
+  //---------------//
+  // r1_rel_exists //
+  //---------------//
+	if(!function_exists('r1_rel_exists')) {
+		/**
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Получить список имён столбцов из указанной таблицы указанной БД
+     *    Возвращает: true / false
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    Сущетсвует ли связь "m4_routes" в модели "MD2_packages" в M-пакете "m1":
+     *    r1_rel_exists("m1","md2_packages","m4_routes");
+     *  </pre>
+     *
+		 * @param  string $packid
+		 * @param  string $model
+		 * @param  string $relation
+     *
+		 * @return bool
+		 */
+    function r1_rel_exists($packid, $model, $relation)
+    { try {
 
+      // 1. Провести валидацию
+      $validator = r4_validate(["packid"=>$packid,"model"=>$model,"relation"=>$relation], [
 
+        "packid"      => ["required", "regex:/^M[1-9]{1}[0-9]*$/ui"],
+        "model"       => ["required", "regex:/^MD[1-9]{1}[0-9]*_/ui"],
+        "relation"    => ["required"]
+
+      ]); if($validator['status'] == -1) {
+        throw new \Exception($validator['data']);
+      }
+
+      // 2. Обработать некоторые аргументы
+      $packid = mb_strtoupper($packid);
+      $model = preg_replace("/^md/ui", "MD", $model);
+
+      // 3. Вернуть результат
+      return method_exists("\\".$packid."\\Models\\".$model, $relation);
+
+    } catch(\Exception $e) {
+      write2log('Ошибка в хелпере r1_rel_exists: '.$e->getMessage(), ['r1_rel_exists']);
+    }}
+	} else {
+    \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_rel_exists, поскольку такая уже есть!');
+    write2log('Внимание! Пакету R1 не удалось определить функцию r1_rel_exists, поскольку такая уже есть!', ['R1','r1_rel_exists']);
+  }
 
