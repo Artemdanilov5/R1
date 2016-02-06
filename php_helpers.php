@@ -75,7 +75,7 @@ use Illuminate\Routing\Controller as BaseController,
      *    r1_hasTable                | Проверить, существует ли таблица $table_name в БД $db_name, в текущем подключении
      *    r1_hasColumn               | Проверить, существует ли столбец $column_name таблице $table_name в БД $db_name, в текущем подключении
      *    r1_getColumns              | Получить список имён столбцов из таблицы $table_name БД $db_name текущего подключения
-     *    r1_rel_exists              | Получить список имён столбцов из указанной таблицы указанной БД
+     *    r1_rel_exists              | Проверить существование связи $relation у модели $model M-пакета $packid
      *
      *  </pre>
      * @return bool
@@ -1271,7 +1271,7 @@ use Illuminate\Routing\Controller as BaseController,
 		/**
      *  <h1>Описание</h1>
      *  <pre>
-     *    Получить список имён столбцов из указанной таблицы указанной БД
+     *    Проверить существование связи $relation у модели $model M-пакета $packid
      *    Возвращает: true / false
      *  </pre>
      *  <h1>Пример использования</h1>
