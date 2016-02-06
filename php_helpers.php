@@ -60,21 +60,22 @@ use Illuminate\Routing\Controller as BaseController,
      *
      *    write2log                  | Возбудить событие R2\Event с ключём "m2:write2log"
      *    runcommand                 | Провести авторизацию и выполнить команду
-     *    r1_get_doc_locale          | Получить локаль документа C,M-пакета
+     *    r1_get_doc_locale          | Получить установленную локаль M,D,L,W-пакета
      *    r1_get_doc_layoutid        | Получить ID L-пакета - шаблона по умолчанию для указанного D-пакета
      *    r1_url_exist               | Узнать, существует ли указанный URL
-     *    r1_array_unique_recursive  | array_unique для многомерных массивов
-     *    r1_udatetime               | Get string repres.of datetime with microseconds
-     *    r1_fs                      | Get new FilesystemManager instance
-     *    r1_fs2                     | Get new Filesystem instance
-     *    r1_config_set              | Set value for specified option of specified config
-     *    r1_query                   | Inter-m-packages-save-queries
+     *    r1_array_unique_recursive  | Аналог array_unique, только для многомерных массивов
+     *    r1_udatetime               | Получить строковое представление datetime с микросекундами.
+     *    r1_fs                      | Получить новый экземпляр класса FilesystemManager
+     *    r1_fs2                     | Получить новый экземпляр класса Filesystem.
+     *    r1_countdim                | Подсчитать кол-во измерений многомерного массива.
+     *    r1_config_set              | Изменить значение любого параметра в любом конфиге laravel из каталога config.
+     *    r1_query                   | Хелпер для безопасного осуществления транс-пакетных запросов.
      *    r1_isJSON                  | Является ли переданная строка валидным JSON
-     *    r1_is_schema_exists        | Существует ли указанная база данных
-     *    r1_hasTable                | Проверить наличие таблицы в указанной БД
-     *    r1_hasColumn               | Проверить наличие столбца в указанной таблице в указанной БД
-     *    r1_getColumns              | Получить список имён столбцов из указанной таблицы указанной БД
-     *    r1_rel_exists              | Существует ли указанная связь в указанной модели
+     *    r1_is_schema_exists        | Проверить, существует ли в текущем подключении указанная БД
+     *    r1_hasTable                | Проверить, существует ли таблица $table_name в БД $db_name, в текущем подключении
+     *    r1_hasColumn               | Проверить, существует ли столбец $column_name таблице $table_name в БД $db_name, в текущем подключении
+     *    r1_getColumns              | Получить список имён столбцов из таблицы $table_name БД $db_name текущего подключения
+     *    r1_rel_exists              | Получить список имён столбцов из указанной таблицы указанной БД
      *
      *  </pre>
      * @return bool
@@ -352,7 +353,7 @@ use Illuminate\Routing\Controller as BaseController,
      *        - $locale нет, или это пустая строка.
      *        - $applocale есть, и это строка.
      *        - $applocale нет в $locales.
-     *       То:
+     *       То
      *        - Возвращается локаль $locales[0].
      *
      *    6. Если ни одно из предыдущих не сработало
@@ -392,45 +393,72 @@ use Illuminate\Routing\Controller as BaseController,
         if(!file_exists(base_path('config/'.mb_strtoupper($packid).'.php')))
           throw new \Exception('Конфиг пакета '.$packid.' не найден в каталоге config.');
 
-        // 3.2]
-      
+        // 3.2] Получить значения параметров locales, locale и applocale
 
+          // Получить
+          $locales    = config(mb_strtoupper($packid).'.locales');
+          $locale     = config(mb_strtoupper($packid).'.locale');
+          $applocale  = config('app.locale');
 
+          // Проверить $locales
+          if(is_null($locales))
+            throw new \Exception("Параметр locales отсутствует в конфиге.");
+          if(empty($locales))
+            throw new \Exception("Параметр locales пуст, что является ошибкой (пакет не может не поддерживать ни одного языка).");
+          if(!is_array($locales))
+            throw new \Exception("Параметр locales не является массивом.");
+          foreach($locales as $l) {
+            if(!is_string($l))
+              throw new \Exception("Одно из значений массива locales не является строкой, что является ошибкой.");
+          }
 
-//        // 3.1] Проверить наличие опубликованного конфига пакета $packid
-//        if(!file_exists(base_path('config/'.mb_strtoupper($packid).'.php')))
-//          throw new \Exception('Конфиг пакета '.$packid.' не найден в каталоге config.');
-//
-//        // 3.2] Получить значения параметров locales, locale и applocale
-//        $locales    = config(mb_strtoupper($packid).'.locales');
-//        $locale     = config(mb_strtoupper($packid).'.locale');
-//        $applocale  = config('app.locale');
-//
-//        // 3.3] Если $locales нет, или это не массив, или она пуста
-//        // - Вернуть локаль "RU"
-//        if(is_null($locales) || !is_array($locales) || empty($locales)) {
-//          write2log("Проблема с локалями в пакете $packid - либо конфиг не опубликован, либо параметр locales пуст или не массив.",['r1_get_doc_locale']);
-//          return [
-//            "status"  => 0,
-//            "data"    => "RU"
-//          ];
-//        }
-//
-//        // 3.4] Если $applocale не пуста и строка, $locale NULL или пуста
-//        // - А $applocale в $locales: вернуть $applocale
-//        // - А $applocale не в $locales: вернуть 1-ю локаль из $locales
-//        if(!empty($applocale) && is_string($applocale) && empty($locale)) {
-//          return [
-//            "status"  => 0,
-//            "data"    => in_array(mb_strtolower($applocale), array_map('strtolower', $locales)) ? $applocale : (array_key_exists(0, $locales) && is_string($locales[0])) ? $locales[0] : "RU"
-//          ];
-//        }
-//
-//        // 3.5] Вернуть локаль "RU"
-//        return [
-//          "status"  => 0,
-//          "data"    => in_array($applocale, $locales) ? $applocale : (array_key_exists(0, $locales) && is_string($locales[0])) ? $locales[0] : "RU"
-//        ];
+          // Привести $locales к нижнему регистру
+          foreach($locales as &$l) {
+            $l = mb_strtolower($l);
+          }
+
+          // Если $locale существует и строка, привести к нижнему регистру
+          if(!empty($locale) && is_string($locale))
+            $locale = mb_strtolower($locale);
+
+          // Если $applocale существует и строка, привести к нижнему регистру
+          if(!empty($applocale) && is_string($applocale))
+            $applocale = mb_strtolower($applocale);
+
+        // 3.2] Если
+        //       - Есть опубликованный конфиг.
+        //       - В нём есть параметры $locales и $locale.
+        //       - $locales является массивом, а $locale строкой.
+        //       - $locale есть в $locales.
+        //      То
+        //       - Возвращается локаль $locale.
+        if(!empty($locale) && is_string($locale) && in_array($locale, $locales))
+          return $locale;
+
+        // 3.3] Если
+        //       - Есть опубликованный конфиг.
+        //       - $locales есть, и это не пустой массив строк.
+        //       - $locale нет, или это пустая строка.
+        //       - $applocale есть, и это строка.
+        //       - $applocale есть в $locales.
+        //      То
+        //       - Возвращается локаль $applocale.
+        if(empty($locale) && !empty($applocale) && is_string($applocale) && in_array($applocale, $locales))
+          return $applocale;
+
+        // 3.4] Если
+        //       - Есть опубликованный конфиг.
+        //       - $locales есть, и это не пустой массив строк.
+        //       - $locale нет, или это пустая строка.
+        //       - $applocale есть, и это строка.
+        //       - $applocale нет в $locales.
+        //      То
+        //       - Возвращается локаль $locales[0].
+        if(empty($locale) && !empty($applocale) && is_string($applocale) && !in_array($applocale, $locales))
+          return $locales[0];
+
+        // 3.5] Вернуть "RU"
+        return "RU";
 
     } catch(\Exception $e) {
       write2log('Ошибка в хелпере r1_get_doc_locale: '.$e->getMessage(), ['r1_get_doc_locale']);
@@ -472,7 +500,16 @@ use Illuminate\Routing\Controller as BaseController,
   //---------------//
 	if(!function_exists('r1_url_exists')) {
 		/**
-		 * Узнать, существует ли указанный URL
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Узнать, существует ли указанный URL
+     *    Возвращает: true / false
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    Сущетсвует ли URL: "http://google.com"
+     *    r1_url_exists("http://google.com");
+     *  </pre>
      *
      * @param  string $url
      *
@@ -512,7 +549,16 @@ use Illuminate\Routing\Controller as BaseController,
   //---------------------------//
 	if(!function_exists('r1_array_unique_recursive')) {
 		/**
-		 * array_unique для многомерных массивов
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Аналог array_unique, только для многомерных массивов
+     *    Возвращает обработанный массив.
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    $array = [1,2,3,2,1,[1,2,3,2,1]];
+     *    r1_array_unique_recursive($array);  // [1,2,3,[1,2,3]]
+     *  </pre>
      *
      * @param  array $array
      *
@@ -544,9 +590,16 @@ use Illuminate\Routing\Controller as BaseController,
   //--------------//
 	if(!function_exists('r1_udatetime')) {
 		/**
-		 * Get string repres.of datetime with microseconds
-     * r1_udatetime('Y-m-d H:i:s.u');       // "2014-01-01 12:20:24.42342"
-     * \Carbon\Carbon::createFromFormat('Y-m-d H:m:s.u', r1_udatetime('Y-m-d H:i:s.u'));
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Получить строковое представление datetime с микросекундами.
+     *    Возвращает строковое представление времени.
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    Получим строковое представление текущего времени с микросекундами.
+     *    r1_udatetime('Y-m-d H:i:s.u');
+     *  </pre>
      *
      * @param  string $format
      * @param  string $utimestamp
@@ -574,7 +627,15 @@ use Illuminate\Routing\Controller as BaseController,
   //-------//
 	if(!function_exists('r1_fs')) {
 		/**
-		 * Get new FilesystemManager instance
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Получить новый экземпляр класса FilesystemManager
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    Получим список имён всех каталогов в каталоге vendor/4gekkman
+     *    r1_fs('vendor/4gekkman')->directories();
+     *  </pre>
      *
      * @param  string $path
      *
@@ -599,7 +660,17 @@ use Illuminate\Routing\Controller as BaseController,
   //--------//
 	if(!function_exists('r1_fs2')) {
 		/**
-		 * Get new Filesystem instance
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Получить новый экземпляр класса Filesystem.
+     *    Отличие от FilesystemManager в том, что в Filesystem больше методов.
+     *    Но используется Filesystem реже, т.к. нельзя в нём задать basepath.
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    Получим список имён всех каталогов в каталоге vendor/4gekkman
+     *    r1_fs2()->directories('vendor/4gekkman');
+     *  </pre>
      *
 		 * @return object
 		 */
@@ -620,7 +691,17 @@ use Illuminate\Routing\Controller as BaseController,
   //-------------//
 	if(!function_exists('r1_countdim')) {
 		/**
-		 * Get new Filesystem instance
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Подсчитать кол-во измерений многомерного массива.
+     *    Возвращает число от 1 и выше в случае успеха.
+     *    Возвращает 0 в случае неудачи.
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    $arr = [1,2,[1,2,[1,2]]];
+     *    $dims = r1_countdim($arr);  // 3
+     *  </pre>
      *
      * @param  string $array
      *
@@ -683,7 +764,18 @@ use Illuminate\Routing\Controller as BaseController,
   //---------------//
 	if(!function_exists('r1_config_set')) {
 		/**
-		 * Set value for specified option of specified config
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Изменить значение любого параметра в любом конфиге laravel из каталога config.
+     *    Возвращает: 1 (в случае успеха) / 0 (в случае неудачи).
+     *    Может работать со значениями любых типов (в т.ч. массивами).
+     *    Новое значение должно быть того же типа, что и старое, иначе ошибка.
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    Изменим значение параметра locale конфига app на "en"
+     *    r1_config_set("app.locale", "en");  // 1
+     *  </pre>
      *
      * @param  string $option
      * @param  string $value2set
@@ -920,7 +1012,19 @@ use Illuminate\Routing\Controller as BaseController,
   //----------//
 	if(!function_exists('r1_query')) {
 		/**
-		 * Inter-m-packages-save-queries
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Хелпер для безопасного осуществления транс-пакетных запросов.
+     *    Возвращает NULL в случае неудачи.
+     *    Возвращает результат запроса в случае успеха.
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    Запросим коллекцию всех пакетов приложения у пакета M1:
+     *    $packages = r1_query(function(){
+     *      return \M1\Models\MD2_packages::all();
+     *    });  // NULL или коллекция пакетов
+     *  </pre>
      *
      * @param  string $callback
      *
@@ -947,6 +1051,17 @@ use Illuminate\Routing\Controller as BaseController,
   //-----------//
 	if(!function_exists('r1_isJSON')) {
 		/**
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Является ли переданная строка валидным JSON
+     *    Возвращает: true / false
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    $maybe_json = '{"name":"Ivan"}';
+     *    $is_json = r1_isJSON($maybe_json);  // true
+     *  </pre>
+     *
 		 * Является ли переданная строка валидным JSON
      *
      * @param  string $string
@@ -973,7 +1088,17 @@ use Illuminate\Routing\Controller as BaseController,
   //---------------------//
 	if(!function_exists('r1_is_schema_exists')) {
 		/**
-		 * Существует ли указанная база данных
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Проверить, существует ли в текущем подключении указанная БД
+     *    Внимание! Проверка регистро-зависимая!
+     *    Возвращает: true / false
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    $schema = "m1";
+     *    $is_schema_exists = r1_is_schema_exists($schema);  // true
+     *  </pre>
      *
      * @param  string $schema
      *
@@ -1000,6 +1125,19 @@ use Illuminate\Routing\Controller as BaseController,
   //-------------//
 	if(!function_exists('r1_hasTable')) {
 		/**
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Проверить, существует ли таблица $table_name в БД $db_name, в текущем подключении
+     *    Внимание! Не путать таблицу с моделью! Проверка регистро-зависима!
+     *    Возвращает: true / false
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    $schema = "m1";
+     *    $table  = "md2_packages";
+     *    $result  = r1_hasTable($schema, $table);
+     *  </pre>
+     *
 		 * Проверить наличие таблицы в указанной БД
      *
 		 * @param  string $db_name
@@ -1033,6 +1171,20 @@ use Illuminate\Routing\Controller as BaseController,
   //--------------//
 	if(!function_exists('r1_hasColumn')) {
 		/**
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Проверить, существует ли столбец $column_name таблице $table_name в БД $db_name, в текущем подключении
+     *    Внимание! Не путать таблицу с моделью! Проверка регистро-зависима!
+     *    Возвращает: true / false
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    $schema  = "m1";
+     *    $table   = "md2_packages";
+     *    $column  = "deleted_at";
+     *    $result  = r1_hasColumn($schema, $table, $column);
+     *  </pre>
+     *
 		 * Проверить наличие столбца в указанной таблице в указанной БД
      *
 		 * @param  string $db_name
@@ -1068,6 +1220,19 @@ use Illuminate\Routing\Controller as BaseController,
   //---------------//
 	if(!function_exists('r1_getColumns')) {
 		/**
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Получить список имён столбцов из таблицы $table_name БД $db_name текущего подключения
+     *    Возвращает NULL в случае неудачи.
+     *    Или массив с именами столбцов в случае успеха.
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    $schema  = "m1";
+     *    $table   = "md2_packages";
+     *    $columns = r1_getColumns($schema, $table);
+     *  </pre>
+     *
 		 * Получить список имён столбцов из указанной таблицы указанной БД
      *
 		 * @param  string $db_name
@@ -1091,6 +1256,7 @@ use Illuminate\Routing\Controller as BaseController,
 
     } catch(\Exception $e) {
       write2log('Ошибка в хелпере r1_getColumns: '.$e->getMessage(), ['r1_getColumns']);
+      return NULL;
     }}
 	} else {
     \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_getColumns, поскольку такая уже есть!');
