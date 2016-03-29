@@ -61,7 +61,6 @@ use Illuminate\Routing\Controller as BaseController,
      *    write2log                  | Возбудить событие R2\Event с ключём "m2:write2log"
      *    runcommand                 | Провести авторизацию и выполнить команду
      *    r1_get_doc_locale          | Получить установленную локаль M,D,L,W-пакета
-     *    r1_get_doc_layoutid        | Получить ID L-пакета - шаблона по умолчанию для указанного D-пакета
      *    r1_url_exist               | Узнать, существует ли указанный URL
      *    r1_array_unique_recursive  | Аналог array_unique, только для многомерных массивов
      *    r1_udatetime               | Получить строковое представление datetime с микросекундами.
@@ -467,31 +466,6 @@ use Illuminate\Routing\Controller as BaseController,
 	} else {
     \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_get_doc_locale, поскольку такая уже есть!');
     write2log('Внимание! Пакету R1 не удалось определить функцию r1_get_doc_locale, поскольку такая уже есть!', ['R1','r1_get_doc_locale']);
-  }
-
-
-  //---------------------//
-  // r1_get_doc_layoutid //
-  //---------------------//
-	if(!function_exists('r1_get_doc_layoutid')) {
-		/**
-		 * Получить ID L-пакета - шаблона по умолчанию для указанного D-пакета
-     *
-     * @param  string $packid
-     *
-		 * @return array
-		 */
-		function r1_get_doc_layoutid($packid) {
-
-
-
-      // N] Вернуть результат
-      return 'L1';
-
-		}
-	} else {
-    \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_get_doc_layoutid, поскольку такая уже есть!');
-    write2log('Внимание! Пакету R1 не удалось определить функцию r1_get_doc_layoutid, поскольку такая уже есть!', ['R1','r1_get_doc_layoutid']);
   }
 
 
