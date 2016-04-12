@@ -75,6 +75,7 @@ use Illuminate\Routing\Controller as BaseController,
      *    r1_hasColumn               | Проверить, существует ли столбец $column_name таблице $table_name в БД $db_name, в текущем подключении
      *    r1_getColumns              | Получить список имён столбцов из таблицы $table_name БД $db_name текущего подключения
      *    r1_rel_exists              | Проверить существование связи $relation у модели $model M-пакета $packid
+     *    r1_checksum                | Получить контрольную сумму для файла или каталога по заданному path
      *
      *  </pre>
      * @return bool
@@ -1287,5 +1288,69 @@ use Illuminate\Routing\Controller as BaseController,
 	} else {
     \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_rel_exists, поскольку такая уже есть!');
     write2log('Внимание! Пакету R1 не удалось определить функцию r1_rel_exists, поскольку такая уже есть!', ['R1','r1_rel_exists']);
+  }
+
+
+  //-------------//
+  // r1_checksum //
+  //-------------//
+	if(!function_exists('r1_checksum')) {
+		/**
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Получить контрольную сумму для файла или каталога по заданному path
+     *    Возвращает: контрольную сумму
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    $path       = "/c/some/dir";
+     *    $checksum   = r1_checksum($path);
+     *  </pre>
+     *
+		 * @param  string $path
+     *
+		 * @return mixed
+		 */
+    function r1_checksum($path)
+    { try {
+
+      // 1. Если по адресу $path нет ни файла, ни папки, вернуть пустую строку
+      if(!file_exists($path)) return "";
+
+      // 2. Если по адресу $path находится файл, вернуть его md5-хэш
+      if(is_file($path)) return md5_file($path);
+
+      // 3. Если по адресу $path находится каталог, вернуть сумму хэшей его файлов
+      $md5_dir = function($path) USE (&$md5_dir) {
+
+        $filemd5s = array();
+        $d = dir($path);
+
+        while (false !== ($entry = $d->read()))
+        {
+            if ($entry != '.' && $entry != '..')
+            {
+                 if (is_dir($path.'/'.$entry))
+                 {
+                     $filemd5s[] = $md5_dir($path.'/'.$entry);
+                 }
+                 else
+                 {
+                     $filemd5s[] = md5_file($path.'/'.$entry);
+                 }
+             }
+        }
+        $d->close();
+        return md5(implode('', $filemd5s));
+
+      };
+      return $md5_dir($path);
+
+    } catch(\Exception $e) {
+      write2log('Ошибка в хелпере r1_checksum: '.$e->getMessage(), ['r1_checksum']);
+    }}
+	} else {
+    \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_checksum, поскольку такая уже есть!');
+    write2log('Внимание! Пакету R1 не удалось определить функцию r1_checksum, поскольку такая уже есть!', ['R1','r1_checksum']);
   }
 
