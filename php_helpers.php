@@ -774,12 +774,7 @@ use Illuminate\Routing\Controller as BaseController,
         throw new \Exception('Значение параметра option не соответствует формату. Пример правильного значения: "M5.common_ison"');
 
       // 3. Получить значение опции
-      $options_path = "";
-      foreach($option_arr as $o) {
-        if(!empty($options_path)) $options_path = $options_path . '.';
-        $options_path = $options_path . $o;
-      }
-      $value = config($options_path);
+      $value = config($option_arr[0].'.'.$option_arr[1]);
 
       // 4. Узнать тип значения опции
       $type = call_user_func(function() USE ($value) {
