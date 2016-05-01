@@ -60,6 +60,7 @@ use Illuminate\Routing\Controller as BaseController,
      *
      *    write2log                  | Возбудить событие R2\Event с ключём "m2:write2log"
      *    runcommand                 | Провести авторизацию и выполнить команду
+     *    lib_current_user_id        | Получить ID текущего пользователя
      *    r1_get_doc_locale          | Получить установленную локаль M,D,L,W-пакета
      *    r1_url_exist               | Узнать, существует ли указанный URL
      *    r1_array_unique_recursive  | Аналог array_unique, только для многомерных массивов
@@ -308,6 +309,39 @@ use Illuminate\Routing\Controller as BaseController,
     \Log::info('Внимание! Пакету R1 не удалось определить функцию runcommand, поскольку такая уже есть!');
     write2log('Внимание! Пакету R1 не удалось определить функцию runcommand, поскольку такая уже есть!', ['R1','runcommand']);
   }
+
+
+  //---------------------//
+  // lib_current_user_id //
+  //---------------------//
+	if(!function_exists('lib_current_user_id')) {
+		/**
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Получить ID текущего пользователя
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    $id = lib_current_user_id();
+     *  </pre>
+     *
+		 * @return number
+		 */
+    function lib_current_user_id()
+    { try {
+
+      return 1;
+
+    } catch(\Exception $e) {
+      write2log('Ошибка в хелпере lib_current_user_id: '.$e->getMessage(), ['lib_current_user_id']);
+      return NULL;
+    }}
+	} else {
+    \Log::info('Внимание! Пакету R1 не удалось определить функцию lib_current_user_id, поскольку такая уже есть!');
+    write2log('Внимание! Пакету R1 не удалось определить функцию lib_current_user_id, поскольку такая уже есть!', ['R1','lib_current_user_id']);
+  }
+
+
 
 
   //-------------------//
