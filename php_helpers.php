@@ -194,22 +194,22 @@ use Illuminate\Routing\Controller as BaseController,
       if(config("M5.authorize_exec_ison") == true) {
 
         // 1.1. Если $userid == -1
-        // - Вернуть ответ со статусом 1 (доступ запрещён)
+        // - Вернуть ответ со статусом -1 (доступ запрещён)
         if($userid == -1)
           return [
-            "status"  => 1,
-            "data"    => ""
+            "status"  => -1,
+            "data"    => $command
           ];
 
         // 1.2. В ином случае, это должно быть число от 0 и выше
-        // - Иначе вернуть ответ со статусом 1 (доступ запрещён)
+        // - Иначе вернуть ответ со статусом -1 (доступ запрещён)
         else {
           $validator = r4_validate(['userid' => $userid], [
             "userid"              => ["required", "regex:/^[0-9]+$/ui"],
           ]); if($validator['status'] == -1) {
             return [
-              "status"  => 1,
-              "data"    => ""
+              "status"  => -1,
+              "data"    => $command
             ];
           }
         }
@@ -241,13 +241,13 @@ use Illuminate\Routing\Controller as BaseController,
 
           // 3] Искать $command в $authorize_exec
           // - Если $authorize_exec не пусто и валидно.
-          // - Если права нет, вернуть статус 1 (доступ запрещён).
+          // - Если права нет, вернуть статус -1 (доступ запрещён).
           if($is_authorize_exec_valid) {
 
             if(!in_array($command, $authorize_exec))
               return [
-                "status"  => 1,
-                "data"    => ""
+                "status"  => -1,
+                "data"    => $command
               ];
 
           }
@@ -257,113 +257,145 @@ use Illuminate\Routing\Controller as BaseController,
           // - Если права нет, вернуть статус 1 (доступ запрещён).
           else {
 
-            // 4.1] Попробовать найти пользователя
+            // 4.1] Получить коллекцию всех команд, которые $userid может выполнять
+            // - Все команды должны быть полностью квалифицированы.
+            $commands = call_user_func(function() USE ($userid) {
+
+              // 4.1.1] Попробовать найти пользователя $userid
+              // - Если найти его не удастся, вернуть пустую коллекцию.
+              $user = \M5\Models\MD1_users::find($userid);
+              if(empty($user))
+                return collect([]);
+
+              // 4.1.2] Получить коллекцию всех exec-прав, связанных с $user
+              $privileges = call_user_func(function() USE ($user) {
+
+                // 1) Состоит ли $user в любой административной группе?
+                $admingroup = \M5\Models\MD2_groups::where('isadmin', 1)
+                  ->whereHas('users', function($query) USE ($user) {
+                    $query->where('id', $user->id);
+                  })->first();
+
+                // 2) Если состоит, вернуть все exec-права
+                if(!empty($admingroup))
+                  return \M5\Models\MD3_privileges::whereHas('privtypes', function($query){
+                    $query->where('name', 'exec');
+                  })->get();
+
+                // 3) Если не состоит, вычислить и вернуть все его права
+                else
+                  return \M5\Models\MD3_privileges::whereHas('privtypes', function($query) {
+                    $query->where('name', 'exec');
+                  })->where(function($query) USE ($user) {
+
+                    // Права, прямо связанные с пользователем
+                    $query->whereHas('users', function($query) USE ($user) {
+                      $query->where('id', $user->id);
+                    });
+
+                    // Права, связанные с группами, с которыми связан пользователь
+                    $query->orWhereHas('groups', function($query) USE ($user) {
+                      $query->whereHas('users', function($query) USE ($user) {
+                        $query->where('id', $user->id);
+                      });
+                    });
+
+                    // Права, связанные с тегами, с которыми связан пользователь
+                    $query->orWhereHas('tags', function($query) USE ($user) {
+                      $query->whereHas('users', function($query) USE ($user) {
+                        $query->where('id', $user->id);
+                      });
+                    });
+
+                    // Права, связанные с тегами, связанные с группами, с которыми связан пользователь.
+                    $query->orWhereHas('tags', function($query) USE ($user) {
+                      $query->whereHas('groups', function($query) USE ($user) {
+                        $query->whereHas('users', function($query) USE ($user) {
+                          $query->where('id', $user->id);
+                        });
+                      });
+                    });
+
+                  })->get();
+
+              });
+
+              // 4.1.3] Если у модели MD5_commands в M1 нет связи m5_privileges
+              // - Вернуть пустую коллекцию.
+              if(!r1_rel_exists("m1", "md5_commands", "m5_privileges"))
+                return collect([]);
+
+              // 4.1.4] В противном случае, вернуть коллекцию соотв.команд
+              $commands = r1_query(function() USE ($privileges) {
+                return \M1\Models\MD5_commands::with(['packages'])->where(function($query) USE ($privileges) {
+                  $query->whereHas('m5_privileges', function($query) USE ($privileges) {
+                    $query->whereIn('id', $privileges->pluck('id'));
+                  });
+                })->get();
+              });
+              if(!$commands) return collect([]);
+              else return $commands;
+
+            });
+
+            // 4.2] Превратить $commands в массив полн.квалиф.команд
+            $commands_final = call_user_func(function() USE ($commands) {
+
+              // 4.2.1] Если $commands эта пустая коллекция, вернуть пустой массив
+              if(count($commands) == 0) return [];
+
+              // 4.2.2] Подготовить массив для результата
+              $result = [];
+
+              // 4.2.3] Пробежаться по $commands и наполнить $result
+              $commands->each(function($item) USE (&$result) {
+
+                array_push($result, "\\".$item->packages[0]->id_inner."\\Commands\\".$item->name);
+
+              });
+
+              // 4.2.n] Вернуть результат
+              return $result;
+
+            });
+
+            // 4.3] Перезаписать в сессии кэш authorize_exec
+            session(['authorize_exec' => $commands_final]);
+
+            // 4.4] Если $command не в $commands_final
+            // - Вернуть статус -1 (нет доступа).
+            if(!in_array($command, $commands_final))
+              return [
+                "status"  => -1,
+                "data"    => $command
+              ];
 
           }
-
 
         }
 
       }
 
-
-
-
-
-
-//      // 1. Получить ID пользователя, запустившего эту команду
-//      $id = !empty($userid) ? $userid : 0;
-//
-//
-//      // 2. Получить все права пользователя с $id
-//
-//        // 2.1. Если это анонимный пользователь
-//        if(!Request::cookie('m7_auth_cookie')) {
-//          $permissions = Cache::get('m7_anon_permissions');
-//        }
-//
-//        // 2.2. Если это аутентифицированный пользователь
-//        else {
-//          $permissions = Cache::tags(['m7', 'm7_permissions_of_user'])->get('m7_permissions_of_user_'.$id);
-//        }
-//
-//        // 2.3. Если $permissions пуста, присвоить ей пустую строку
-//        if(empty($permissions)) $permissions = '';
-//
-//        // 2.4. Преобразовать $permissions в массив с разделителем ','
-//        $permissions_arr = explode(',', $permissions);
-//
-//
-//      // 3. Получить код команды в формате, принятом для прав на исполнение команд
-//      // - Пример такого кода: "M1_Main_C1"
-//
-//        // 3.1. Разбить полностью квалифицированный путь к команде на массив сегментов
-//        // - Пример такого пути: \M5\Documents\Main\Commands\C1_get_datetime
-//        $segments = explode('\\', $command);
-//
-//        // 3.2. Получить ID модуля, имя документа и ID команды
-//
-//          // ID модуля
-//          $id_module = $segments[1];
-//
-//          // Имя документа
-//          $doc = $segments[3];
-//
-//          // ID команды
-//          $id_command = explode('_', $segments[5])[0];
-//
-//        // 3.3. Получить код команды в требуемом формате
-//        $command_code = $id_module . '_' . $doc . '_' . $id_command;
-//
-//
-//      // 4. Попробовать найти право типа 2, имеющее имя $command_code
-//
-//        // 4.1. Провести поиск права
-//        $p = \M7\Models\MD4_permissions::where('id_type','=',2)->where('name','=',$command_code)->first();
-//
-//
-//      // 5. Определить, имеет ли пользователь, от чего имени исполняется команда, исполнять её
-//
-//        // 5.1. Подготовить переменную для результата
-//        $is_have_permission = false;
-//
-//        // 5.2. Если $p найдено, и есть в $permissions_arr, значит имеет
-//        if(!empty($p)) {
-//          if(in_array($p->id, $permissions_arr)) $is_have_permission = true;
-//        }
-//
-//        // 5.3. Если $userid == 0, значит имеет
-//        if($userid == 0) $is_have_permission = true;
-//
-//
-//      // 6. Если не имеет права
-//      // - Вернуть -1
-//      if($is_have_permission == false) {
-//
-//        return -1;
-//
-//      }
-
-
-
-      // X. Выполнить команду $command
+      // 2. Выполнить команду $command
       // - Передав ей данные $data
 
-        // Синхронно
+        // 2.1. Синхронно, если иное не указано в 4-м аргументе runcommand
         if($queue['on'] == false) $result = Bus::dispatch(new $command($data));
 
-        // Асинхронно
+        // 2.2. Асинхронно (отправить в очередь)
         else {
 
+          // 1] С задержкой, если она назначена в 4-м агрументе runcommand
           if(empty($queue['delaysecs'])) Queue::push(new $command($data));
+
+          // 2] Без задержки
           else Queue::later($queue['delaysecs'], new $command($data));
 
         }
 
+      // 3. Подготовить массив с ответом, и вернуть
 
-      // Y. Подготовить массив с ответом, и вернуть
-
-        // Если команда выполняется синхронно
+        // 3.1. Если команда выполняется синхронно
         if($queue['on'] == false) {
           $response = [
             "status"    => $result['status'],
@@ -374,7 +406,7 @@ use Illuminate\Routing\Controller as BaseController,
           return $response;
         }
 
-        // Если команда выполняется асинхронно
+        // 3.2. Если команда выполняется асинхронно
         if($queue['on'] == true) {
           $response = [
             "status"    => 0,
