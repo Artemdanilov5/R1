@@ -190,6 +190,87 @@ use Illuminate\Routing\Controller as BaseController,
      */
     function runcommand($command, $data = [], $userid = 0, $queue = ['on'=>false, 'delaysecs'=>'']) {
 
+      // 1. Провести exec-авторизацию, если она включена
+      if(config("M5.authorize_exec_ison") == true) {
+
+        // 1.1. Если $userid == -1
+        // - Вернуть ответ со статусом 1 (доступ запрещён)
+        if($userid == -1)
+          return [
+            "status"  => 1,
+            "data"    => ""
+          ];
+
+        // 1.2. В ином случае, это должно быть число от 0 и выше
+        // - Иначе вернуть ответ со статусом 1 (доступ запрещён)
+        else {
+          $validator = r4_validate(['userid' => $userid], [
+            "userid"              => ["required", "regex:/^[0-9]+$/ui"],
+          ]); if($validator['status'] == -1) {
+            return [
+              "status"  => 1,
+              "data"    => ""
+            ];
+          }
+        }
+
+        // 1.3. Если $userid !== 0, то провести exec-авторизацию
+        if($userid !== 0) {
+
+          // 1] Извлечь из сессии значение по ключу "authorize_exec"
+          $authorize_exec = session('authorize_exec');
+
+          // 2] Провести валидацию $authorize_exec
+          $is_authorize_exec_valid = call_user_func(function() USE ($authorize_exec) {
+
+            // 2.1] Если $auth_cache пусто, вернуть false
+            if(empty($auth_cache)) return false;
+
+            // 2.2] Если $authorize_exec не массив строк, вернуть false
+            $validator = r4_validate(['authorize_exec' => $authorize_exec], [
+              "authorize_exec"              => ["required", "array"],
+              "authorize_exec.*"            => ["string"]
+            ]); if($validator['status'] == -1) {
+              return false;
+            }
+
+            // 2.3] Вернуть true
+            return true;
+
+          });
+
+          // 3] Искать $command в $authorize_exec
+          // - Если $authorize_exec не пусто и валидно.
+          // - Если права нет, вернуть статус 1 (доступ запрещён).
+          if($is_authorize_exec_valid) {
+
+            if(!in_array($command, $authorize_exec))
+              return [
+                "status"  => 1,
+                "data"    => ""
+              ];
+
+          }
+
+          // 4] Иначе, искать право на выполнение $command пользователя в БД
+          // - А заодно и перезаписать кэш "authorize_exec" в сессии.
+          // - Если права нет, вернуть статус 1 (доступ запрещён).
+          else {
+
+            // 4.1] Попробовать найти пользователя
+
+          }
+
+
+        }
+
+      }
+
+
+
+
+
+
 //      // 1. Получить ID пользователя, запустившего эту команду
 //      $id = !empty($userid) ? $userid : 0;
 //
@@ -319,6 +400,8 @@ use Illuminate\Routing\Controller as BaseController,
      *  <h1>Описание</h1>
      *  <pre>
      *    Получить ID текущего пользователя
+     *    Вернёт -1, если оный вычислить не удалось (пользователь не аутентифицирован).
+     *    Вернёт ID текущего пользователя, если оный вычислить удалось (в т.ч. это м.б. id guest'а).
      *  </pre>
      *  <h1>Пример использования</h1>
      *  <pre>
@@ -330,7 +413,42 @@ use Illuminate\Routing\Controller as BaseController,
     function lib_current_user_id()
     { try {
 
-      return 1;
+      // 1. Получить из сессии значение по ключу "auth_cache"
+      $auth_cache = session('auth_cache');
+
+      // 2. Провести валидацию $auth_cache
+      $is_auth_cache_valid = call_user_func(function() USE ($auth_cache) {
+
+        // 2.1] Если $auth_cache пусто, вернуть -1
+        if(empty($auth_cache)) return -1;
+
+        // 2.2] Если $auth_cache не является валидным json, вернуть -1
+        $validator = r4_validate(['auth_cache' => $auth_cache], [
+          "auth_cache"         => ["required", "json"],
+        ]); if($validator['status'] == -1) {
+          return -1;
+        }
+
+        // 2.3] Расшифровать json
+        $auth_cache_json = json_decode($auth_cache, true);
+
+        // 2.4] Если в массиве $auth_cache_json нет ключей 'user', 'user.id', вернуть -1
+        if(!array_key_exists('user', $auth_cache_json) || !array_key_exists('id', $auth_cache_json['user'])) return -1;
+
+        // 2.5] Если $auth_cache_json['user']['id'] пусто или не является положительным целым числом, вернуть -1
+        $validator = r4_validate(['id' => $auth_cache_json['user']['id']], [
+          "id"              => ["required", "regex:/^[1-9]+[0-9]*$/ui"],
+        ]); if($validator['status'] == -1) {
+          return -1;
+        }
+
+        // 2.6] Вернуть $auth_cache_json['user']['id']
+        return $auth_cache_json['user']['id'];
+
+      });
+
+      // 3. Вернуть результат
+      return $is_auth_cache_valid;
 
     } catch(\Exception $e) {
       write2log('Ошибка в хелпере lib_current_user_id: '.$e->getMessage(), ['lib_current_user_id']);
@@ -340,8 +458,6 @@ use Illuminate\Routing\Controller as BaseController,
     \Log::info('Внимание! Пакету R1 не удалось определить функцию lib_current_user_id, поскольку такая уже есть!');
     write2log('Внимание! Пакету R1 не удалось определить функцию lib_current_user_id, поскольку такая уже есть!', ['R1','lib_current_user_id']);
   }
-
-
 
 
   //-------------------//
