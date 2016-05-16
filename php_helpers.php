@@ -223,8 +223,8 @@ use Illuminate\Routing\Controller as BaseController,
           // 2] Провести валидацию $authorize_exec
           $is_authorize_exec_valid = call_user_func(function() USE ($authorize_exec) {
 
-            // 2.1] Если $auth_cache пусто, вернуть false
-            if(empty($auth_cache)) return false;
+            // 2.1] Если $authorize_exec пусто, вернуть false
+            if(empty($authorize_exec)) return false;
 
             // 2.2] Если $authorize_exec не массив строк, вернуть false
             $validator = r4_validate(['authorize_exec' => $authorize_exec], [
@@ -254,11 +254,10 @@ use Illuminate\Routing\Controller as BaseController,
 
           // 4] Иначе, искать право на выполнение $command пользователя в БД
           // - А заодно и перезаписать кэш "authorize_exec" в сессии.
-          // - Если права нет, вернуть статус 1 (доступ запрещён).
+          // - Если права нет, вернуть статус -1 (доступ запрещён).
           else {
 
             // 4.1] Получить коллекцию всех команд, которые $userid может выполнять
-            // - Все команды должны быть полностью квалифицированы.
             $commands = call_user_func(function() USE ($userid) {
 
               // 4.1.1] Попробовать найти пользователя $userid
