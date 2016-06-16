@@ -188,7 +188,7 @@ use Illuminate\Routing\Controller as BaseController,
      *
      * @return mixed
      */
-    function runcommand($command, $data = [], $userid = 0, $queue = ['on'=>false, 'delaysecs'=>'']) {
+    function runcommand($command, $data = [], $userid = 0, $queue = ['on'=>false, 'delaysecs'=>'', 'name' => 'default']) {
 
       // 1. Провести exec-авторизацию, если она включена
       if(config("M5.authorize_exec_ison") == true) {
@@ -384,11 +384,11 @@ use Illuminate\Routing\Controller as BaseController,
         // 2.2. Асинхронно (отправить в очередь)
         else {
 
-          // 1] С задержкой, если она назначена в 4-м агрументе runcommand
-          if(empty($queue['delaysecs'])) Queue::push(new $command($data));
+          // 1] Без задержки
+          if(empty($queue['delaysecs'])) Queue::push(new $command($data), [], $queue['name']);
 
-          // 2] Без задержки
-          else Queue::later($queue['delaysecs'], new $command($data));
+          // 2] С задержкой, если она назначена в 4-м агрументе runcommand
+          else Queue::later($queue['delaysecs'], new $command($data), [], $queue['name']);
 
         }
 
