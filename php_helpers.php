@@ -1509,7 +1509,7 @@ use Illuminate\Routing\Controller as BaseController,
 
         while (false !== ($entry = $d->read()))
         {
-          write2log($entry, []);
+
             if ($entry != '.' && $entry != '..')
             {
                  if (is_dir($path.'/'.$entry))
