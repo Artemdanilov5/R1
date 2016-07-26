@@ -1509,6 +1509,7 @@ use Illuminate\Routing\Controller as BaseController,
 
         while (false !== ($entry = $d->read()))
         {
+          write2log($entry, []);
             if ($entry != '.' && $entry != '..')
             {
                  if (is_dir($path.'/'.$entry))
@@ -1521,6 +1522,7 @@ use Illuminate\Routing\Controller as BaseController,
                  }
              }
         }
+
         $d->close();
         return md5(implode('', $filemd5s));
 
