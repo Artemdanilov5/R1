@@ -375,13 +375,41 @@ use Illuminate\Routing\Controller as BaseController,
 
       }
 
-      // 2. Выполнить команду $command
+      // 2. Добавить запись в лог
+
+        // 2.1. Если команда выполнена без ограничений по правам
+        if($userid == 0) {
+
+          file_put_contents(env('LOG_EXEC_UNLIMITED'), json_encode([
+            'ip'        => \Request::ip(),
+            'id_user'   => $userid,
+            'command'   => $command,
+            'data'      => json_encode($data, JSON_UNESCAPED_UNICODE),
+            'datetime'  => \Carbon\Carbon::now()->toDateTimeString()
+          ], JSON_UNESCAPED_UNICODE).PHP_EOL , FILE_APPEND | LOCK_EX);
+
+        }
+
+        // 2.2. Если команда выполнена от имени пользователя
+        else {
+
+          file_put_contents(env('LOG_EXEC'), json_encode([
+            'ip'        => \Request::ip(),
+            'id_user'   => $userid,
+            'command'   => $command,
+            'data'      => json_encode($data, JSON_UNESCAPED_UNICODE),
+            'datetime'  => \Carbon\Carbon::now()->toDateTimeString()
+          ], JSON_UNESCAPED_UNICODE).PHP_EOL , FILE_APPEND | LOCK_EX);
+
+        }
+
+      // 3. Выполнить команду $command
       // - Передав ей данные $data
 
-        // 2.1. Синхронно, если иное не указано в 4-м аргументе runcommand
+        // 3.1. Синхронно, если иное не указано в 4-м аргументе runcommand
         if($queue['on'] == false) $result = Bus::dispatch(new $command($data));
 
-        // 2.2. Асинхронно (отправить в очередь)
+        // 3.2. Асинхронно (отправить в очередь)
         else {
 
           // 1] Без задержки
@@ -392,9 +420,9 @@ use Illuminate\Routing\Controller as BaseController,
 
         }
 
-      // 3. Подготовить массив с ответом, и вернуть
+      // 4. Подготовить массив с ответом, и вернуть
 
-        // 3.1. Если команда выполняется синхронно
+        // 4.1. Если команда выполняется синхронно
         if($queue['on'] == false) {
           $response = [
             "status"    => $result['status'],
@@ -405,7 +433,7 @@ use Illuminate\Routing\Controller as BaseController,
           return $response;
         }
 
-        // 3.2. Если команда выполняется асинхронно
+        // 4.2. Если команда выполняется асинхронно
         if($queue['on'] == true) {
           $response = [
             "status"    => 0,
