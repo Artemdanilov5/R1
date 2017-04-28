@@ -378,7 +378,7 @@ use Illuminate\Routing\Controller as BaseController,
       // 2. Добавить запись в лог
 
         // 2.1. Если команда выполнена без ограничений по правам
-        if($userid == 0) {
+        if($userid === 0) {
 
           file_put_contents(env('LOG_EXEC_UNLIMITED'), json_encode([
             'ip'        => \Request::ip(),
