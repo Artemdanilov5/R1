@@ -77,6 +77,8 @@ use Illuminate\Routing\Controller as BaseController,
      *    r1_getColumns              | Получить список имён столбцов из таблицы $table_name БД $db_name текущего подключения
      *    r1_rel_exists              | Проверить существование связи $relation у модели $model M-пакета $packid
      *    r1_checksum                | Получить контрольную сумму для файла или каталога по заданному path
+     *    r1_encrypt_data            | Зашифровать $text указанным $key
+     *    r1_decrypt_data            | Расшифровать $text указанным $key
      *
      *  </pre>
      * @return bool
@@ -1564,4 +1566,83 @@ use Illuminate\Routing\Controller as BaseController,
     \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_checksum, поскольку такая уже есть!');
     write2log('Внимание! Пакету R1 не удалось определить функцию r1_checksum, поскольку такая уже есть!', ['R1','r1_checksum']);
   }
+
+
+  //-----------------//
+  // r1_encrypt_data //
+  //-----------------//
+	if(!function_exists('r1_encrypt_data')) {
+		/**
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Зашифровать $text указанным $key
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    $crypttext = r1_encrypt_data($key,$text);
+     *  </pre>
+     *
+		 * @param  string $key
+		 * @param  string $text
+     *
+		 * @return mixed
+		 */
+    function r1_encrypt_data($text, $key)
+    { try {
+      $iv_size = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB);
+      $iv = mcrypt_create_iv($iv_size, MCRYPT_RAND);
+      $encrypted_text = mcrypt_encrypt(MCRYPT_RIJNDAEL_256, $key, $text, MCRYPT_MODE_ECB, $iv);
+      return base64_encode($encrypted_text);
+    } catch(\Exception $e) {
+      write2log('Ошибка в хелпере r1_encrypt_data: '.$e->getMessage(), ['r1_encrypt_data']);
+    }}
+	} else {
+    \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_encrypt_data, поскольку такая уже есть!');
+    write2log('Внимание! Пакету R1 не удалось определить функцию r1_encrypt_data, поскольку такая уже есть!', ['R1','r1_encrypt_data']);
+  }
+
+
+  //-----------------//
+  // r1_decrypt_data //
+  //-----------------//
+	if(!function_exists('r1_decrypt_data')) {
+		/**
+     *  <h1>Описание</h1>
+     *  <pre>
+     *    Расшифровать $text указанным $key
+     *  </pre>
+     *  <h1>Пример использования</h1>
+     *  <pre>
+     *    $crypttext = r1_decrypt_data($key,$text);
+     *  </pre>
+     *
+		 * @param  string $key
+		 * @param  string $text
+     *
+		 * @return mixed
+		 */
+    function r1_decrypt_data($text, $key)
+    { try {
+      $text = base64_decode($text);
+      $iv_size = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB);
+      $iv = mcrypt_create_iv($iv_size, MCRYPT_RAND);
+      $decrypted_text = mcrypt_decrypt(MCRYPT_RIJNDAEL_256, $key, $text, MCRYPT_MODE_ECB, $iv);
+      return rtrim($decrypted_text, "\0");
+    } catch(\Exception $e) {
+      write2log('Ошибка в хелпере r1_decrypt_data: '.$e->getMessage(), ['r1_decrypt_data']);
+    }}
+	} else {
+    \Log::info('Внимание! Пакету R1 не удалось определить функцию r1_decrypt_data, поскольку такая уже есть!');
+    write2log('Внимание! Пакету R1 не удалось определить функцию r1_decrypt_data, поскольку такая уже есть!', ['R1','r1_decrypt_data']);
+  }
+
+
+
+
+
+
+
+
+
+
 
